@@ -1,0 +1,46 @@
+import pandas as pd
+import scipy.stats as stats
+
+df = pd.read_csv(r"D:\Python misc\PycharmProjects\NISdata\NISPUF17.csv")
+
+def proportion_of_education(): #Shows education level of mothers of studied children by proportion
+    s = df["EDUC1"]
+    s = s.replace([1, 2, 3, 4], ["less than high school", "high school", "more than high school but not college", "college"])
+    new_s = s.value_counts()/s.count()
+    return (new_s.to_dict())
+print(proportion_of_education())
+
+def breastfeeding_flu_doses(): #Tuple of average flu vaccines for kids that received breastmilk and those that didn't
+    s = df[["CBF_01", "P_NUMFLU"]]
+    s = s.dropna()
+    s = s[(s['CBF_01'] ==1) | (s['CBF_01']== 2)]
+    s_yes = s.where(s['CBF_01'] == 1).mean()
+    s_no = s.where(s['CBF_01'] == 2).mean()
+    tupleBF = (s_yes["P_NUMFLU"], s_no["P_NUMFLU"])
+    return tupleBF
+print(breastfeeding_flu_doses())
+
+def cpox_by_sex(): #returns children that got chickenpox and were vaccinated over children that were vaccinated and didn't get it, separated by sex
+    s = df[["SEX", "HAD_CPOX", "P_NUMVRC"]]
+    s = s.dropna()
+    s = s[(s['HAD_CPOX'] ==1) | (s['HAD_CPOX']== 2)]
+    s["SEX"] = s["SEX"].replace([1], "male")
+    s["SEX"] = s["SEX"].replace([2], "female")
+    s_yes = s.where((s['P_NUMVRC'] != 0))
+    s_male = s_yes.where(s["SEX"] == "male")
+    s_male = s_male["HAD_CPOX"].value_counts()/(s_male["HAD_CPOX"].count() - s_male["HAD_CPOX"].value_counts())
+    s_female = s_yes.where(s['SEX'] == "female")
+    s_female = s_female["HAD_CPOX"].value_counts()/(s_female["HAD_CPOX"].count() - s_female["HAD_CPOX"].value_counts())
+    finaldict = {"male": s_male.iloc[1], "female" : s_female.iloc[1]}
+    return finaldict
+print(cpox_by_sex())
+
+def corr_cpox(): #correlation between getting vaxxed and not getting chickenpox
+    ndf = df[["HAD_CPOX", "P_NUMVRC"]]
+    ndf = ndf[(df['HAD_CPOX'] == 1) | (df['HAD_CPOX'] == 2)]
+    ndf = ndf.rename(columns={"HAD_CPOX": "had_chickenpox", "P_NUMVRC": "num_cpox_vaccines"})
+    ndf = ndf.dropna()
+
+    corr, pval = stats.pearsonr(ndf["had_chickenpox"], ndf["num_cpox_vaccines"])
+    return corr
+print(corr_cpox())

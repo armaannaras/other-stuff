@@ -1,0 +1,421 @@
+import pandas as pd
+import numpy as np
+import scipy.stats as stats
+
+pd.set_option('display.width', 100)
+pd.set_option('display.max_columns',10)
+
+
+nhl_df = pd.read_csv(r"D:\Python misc\PycharmProjects\sportswrcorr\nhl.csv")
+nba_df = pd.read_csv(r"D:\Python misc\PycharmProjects\sportswrcorr\nba.csv")
+mlb_df = pd.read_csv(r"D:\Python misc\PycharmProjects\sportswrcorr\mlb.csv")
+nfl_df = pd.read_csv(r"D:\Python misc\PycharmProjects\sportswrcorr\nfl.csv")
+
+cities = pd.read_html(r"D:\Python misc\PycharmProjects\sportswrcorr\wikipedia_data.html")[1]
+cities = cities.iloc[:-1, [0, 3, 5, 6, 7, 8]]
+
+
+def nhl_correlation(): #Correlation between team WR and population of city in the NHL
+    df = nhl_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\*", value="")
+    cities2 = cities2[cities2.NHL != "—"]
+    cities2 = cities2[cities2.NHL != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W", "L"]]
+    df = df[~df.team.str.contains("Division")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "NHL"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"NHL": str})
+    teams = cities2["NHL"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    df["team"] = df["team"].str.extract(r"\s(\w+)$")
+
+    df = df.astype({'W': int, 'L': int})
+    df["W/L%"] = df["W"] / (df["W"] + df["L"])
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams)
+    cities2 = cities2[28:]
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, how= 'outer', on ='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+
+    population_by_region = df["Population"].dropna()
+    win_loss_by_region = df["W/L%"]
+    return stats.pearsonr(population_by_region, win_loss_by_region)[0]
+
+print(nhl_correlation())
+
+
+def nba_correlation(): #NBA wr-pop correlation
+    df = nba_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\([^()]*\)", value="")
+    df = df.replace(regex=r"\*", value="")
+    cities2 = cities2[cities2.NBA != "—"]
+    cities2 = cities2[cities2.NBA != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W/L%"]]
+    df = df[~df.team.str.contains("Division")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "NBA"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"NBA": str})
+    teams = cities2["NBA"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    df["team"] = df["team"].str.extract(r"(\w+)\s$")
+    df = df.astype({'W/L%': float})
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams)
+    cities2 = cities2[28:]
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+
+    population_by_region = df["Population"]
+    win_loss_by_region = df["W/L%"]
+
+    return stats.pearsonr(population_by_region, win_loss_by_region)[0]
+
+
+print(nba_correlation())
+
+
+def mlb_correlation(): #mlb wr-pop correlation
+    df = mlb_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\([^()]*\)", value="")
+    df = df.replace(regex=r"\*", value="")
+    cities2 = cities2[cities2.MLB != "—"]
+    cities2 = cities2[cities2.MLB != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W-L%"]]
+    df.rename(columns={"W-L%": "W/L%"}, inplace=True)
+    df = df[~df.team.str.contains("Division")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "MLB"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"MLB": str})
+    teams = cities2["MLB"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    teams[0] = teams[0].str.replace('\ Sox', 'Sox', regex = True)
+    teams[1] = teams[1].str.replace('\ Sox', 'Sox', regex = True)
+    df["team"] = df["team"].str.replace('\ Sox', 'Sox', regex = True)
+
+    df["team"] = df["team"].str.extract(r"(\w+)$")
+    df = df.astype({'W/L%': float})
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams)
+    cities2 = cities2[26:]
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+
+    population_by_region = df["Population"]
+    win_loss_by_region = df["W/L%"]
+
+    return stats.pearsonr(population_by_region, win_loss_by_region)[0]
+
+
+print(mlb_correlation())
+
+
+def nfl_correlation():
+    df = nfl_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\([^()]*\)", value="")
+    df = df.replace(regex=r"\*", value="")
+    df = df.replace(regex=r"\+", value="")
+
+    cities2 = cities2[cities2.NFL != "—"]
+    cities2 = cities2[cities2.NFL != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W-L%"]]
+    df.rename(columns={"W-L%": "W/L%"}, inplace=True)
+    df = df[~df.team.str.contains("FC")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "NFL"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"NFL": str})
+    teams = cities2["NFL"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    df["team"] = df["team"].str.extract(r"(\w+)$")
+    df = df.astype({'W/L%': float})
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams).drop("NFL", axis=1)
+    cities2 = cities2.dropna()
+    cities2 = cities2.drop([13]).reset_index(drop=True)
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+
+    population_by_region = df["Population"]
+    win_loss_by_region = df["W/L%"]
+
+    return stats.pearsonr(population_by_region, win_loss_by_region)[0]
+
+
+print(nfl_correlation())
+
+
+def nhl(): #Cleans data to provide dataframe for last function, similar to previous functions but doesnt use the data
+    df = nhl_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\*", value="")
+    cities2 = cities2[cities2.NHL != "—"]
+    cities2 = cities2[cities2.NHL != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W", "L"]]
+    df = df[~df.team.str.contains("Division")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "NHL"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"NHL": str})
+    teams = cities2["NHL"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    df["team"] = df["team"].str.extract(r"\s(\w+)$")
+
+    df = df.astype({'W': int, 'L': int})
+    df["W/L%"] = df["W"] / (df["W"] + df["L"])
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams)
+    cities2 = cities2[28:]
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': int})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+    df.rename(columns={"W/L%": "NHL"}, inplace=True)
+    df = df.drop(columns="Population")
+    return df
+
+
+def nba():
+    df = nba_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\([^()]*\)", value="")
+    df = df.replace(regex=r"\*", value="")
+    cities2 = cities2[cities2.NBA != "—"]
+    cities2 = cities2[cities2.NBA != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W/L%"]]
+    df = df[~df.team.str.contains("Division")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "NBA"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"NBA": str})
+    teams = cities2["NBA"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    df["team"] = df["team"].str.extract(r"(\w+)\s$")
+    df = df.astype({'W/L%': float})
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams)
+    cities2 = cities2[28:]
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+    df.rename(columns={"W/L%": "NBA"}, inplace=True)
+    df = df.drop(columns="Population")
+    return df
+
+
+def mlb():
+    df = mlb_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\([^()]*\)", value="")
+    df = df.replace(regex=r"\*", value="")
+    cities2 = cities2[cities2.MLB != "—"]
+    cities2 = cities2[cities2.MLB != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W-L%"]]
+    df.rename(columns={"W-L%": "W/L%"}, inplace=True)
+    df = df[~df.team.str.contains("Division")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "MLB"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"MLB": str})
+    teams = cities2["MLB"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    teams[0] = teams[0].str.replace('\ Sox', 'Sox', regex = True)
+    teams[1] = teams[1].str.replace('\ Sox', 'Sox', regex = True)
+    df["team"] = df["team"].str.replace('\ Sox', 'Sox', regex = True)
+
+    df["team"] = df["team"].str.extract(r"(\w+)$")
+    df = df.astype({'W/L%': float})
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams)
+    cities2 = cities2[26:]
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+    df.rename(columns={"W/L%": "MLB"}, inplace=True)
+    df = df.drop(columns="Population")
+    return df
+
+
+def nfl():
+    df = nfl_df.copy()
+    cities2 = cities.copy()
+    cities2 = cities2.replace(regex=r"\[[^()]*\]", value="")
+    df = df.replace(regex=r"\([^()]*\)", value="")
+    df = df.replace(regex=r"\*", value="")
+    df = df.replace(regex=r"\+", value="")
+
+    cities2 = cities2[cities2.NFL != "—"]
+    cities2 = cities2[cities2.NFL != ""]
+    df = df[df['year'] == 2018]
+    df = df[["team", "W-L%"]]
+    df.rename(columns={"W-L%": "W/L%"}, inplace=True)
+    df = df[~df.team.str.contains("FC")]
+    df = df.reset_index(drop=True)
+    cities2.rename(columns={"Metropolitan area": "region", "Population (2016 est.)[8]": "Population"}, inplace=True)
+    cities2 = cities2[["region", "Population", "NFL"]]
+    cities2 = cities2.reset_index(drop=True)
+    cities2 = cities2.astype({"NFL": str})
+    teams = cities2["NFL"].str.extract('([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)([A-Z]{0,2}[a-z0-9]*\ [A-Z]{0,2}[a-z0-9]*|[A-Z]{0,2}[a-z0-9]*)')
+    df["team"] = df["team"].str.extract(r"(\w+)$")
+    df = df.astype({'W/L%': float})
+
+    teams["region"] = cities2["region"]
+    teams["Population"] = cities2["Population"]
+    cities2 = cities2.append(teams).drop("NFL", axis=1)
+    cities2 = cities2.dropna()
+    cities2 = cities2.drop([13]).reset_index(drop=True)
+    for i in range(len(cities2)):
+        if cities2.loc[i][1] != "":
+            cities2.loc[i + 0.5] = cities2.loc[i]
+            cities2.loc[i + 0.5][0] = cities2.loc[i][1]
+        if cities2.loc[i][2] != "":
+            cities2.loc[i + 0.75] = cities2.loc[i]
+            cities2.loc[i + 0.75][0] = cities2.loc[i][2]
+    cities2 = cities2.drop([1, 2], axis=1)
+    cities2 = cities2.rename(columns={0: "team"})
+    cities2 = cities2.sort_index().reset_index(drop=True)
+    cities2["team"] = cities2["team"].str.extract(r"\s*(\w+)$")
+    df = pd.merge(cities2, df, 'outer', on='team')
+    df = df.astype({'Population': float})
+    df = df.groupby('region').agg({'W/L%': np.nanmean, 'Population': np.nanmean})
+    df.rename(columns={"W/L%": "NFL"}, inplace=True)
+    df = df.drop(columns="Population")
+    return df
+
+
+def finddf(x):
+    if x == "NHL":
+        return nhl()
+    elif x == "NBA":
+        return nba()
+    elif x == "MLB":
+        return mlb()
+    elif x == "NFL":
+        return nfl()
+
+
+def sports_team_performance(): #TTest between each sport, seeing if teams in the same area will perform similarly in their respective sports
+    sports = ['NFL', 'NBA', 'NHL', 'MLB']
+    p_values = pd.DataFrame({k: np.nan for k in sports}, index=sports)
+    for i in sports:
+        for j in sports:
+            if i != j:
+                merge = pd.merge(finddf(i), finddf(j), how="inner", on="region")
+                p_values.loc[i, j] = stats.ttest_rel(merge[i], merge[j])[1]
+    return p_values
+
+
+print(sports_team_performance())

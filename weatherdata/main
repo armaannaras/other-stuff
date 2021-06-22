@@ -3,7 +3,7 @@ import mplleaflet
 import pandas as pd
 import numpy as np
 
-df = pd.read_csv('data/C2A2_data/BinSize_d400.csv')
+df = pd.read_csv(BinSize_d400.csv') #Binsize file
 
 station_locations_by_hash = df[df['hash'] == 'fb441e62df2d58994928907a91895ec62c2c42e6cd075c2700843b89']
 
@@ -17,7 +17,7 @@ plt.scatter(lons, lats, c='r', alpha=0.7, s=200)
 mplleaflet.display()
 
 
-df = pd.read_csv("data/C2A2_data/BinnedCsvs_d400/fb441e62df2d58994928907a91895ec62c2c42e6cd075c2700843b89.csv")
+df = pd.read_csv("fb441e62df2d58994928907a91895ec62c2c42e6cd075c2700843b89.csv") #Ann Arbor Data file
 df["Data_Value"] = df["Data_Value"]/10
 df["Year"] = df["Date"].apply(lambda x: x[:4])
 df["Date"] = df["Date"].apply(lambda x: x[5:])

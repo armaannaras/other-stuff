@@ -1,0 +1,53 @@
+!pip install beautifulsoup4
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib notebook
+
+giantsdf = pd.read_csv("giants.csv")
+jetsdf = pd.read_csv("jets.csv")
+weatherdf = pd.read_html("ONJSC __ Historical Monthly Summary Tables.html", flavor = "html5lib")[0]
+
+weather = weatherdf.iloc[:, 1:15]
+weather = weather.set_index("Year")
+weather = weather[1990:2020]
+weather= weather[["Sep","Oct","Nov","Dec"]]
+weather = weather.applymap(lambda x: x[0:4])
+weather = weather.astype(float)
+weather["mean"] = weather.mean(axis = 1)
+weather.index = weather.index.astype(int)
+weather.reindex(index=weather.index[::-1])
+weather.index = weather.index.astype(str)
+
+
+giants = giantsdf.iloc[:,0:5]
+giants.columns = giants.iloc[0]
+giants = giants.set_index("Year")
+giants = giants[2:33]
+giants["W"] = giants["W"].astype(int)
+giants["L"] = giants["L"].astype(int)
+giants["WL"] = giants["W"]/(giants["W"]+giants["L"])
+
+jets = jetsdf.iloc[:,0:5]
+jets.columns = jets.iloc[0]
+jets = jets.set_index("Year")
+jets = jets[2:33]
+jets["W"] = jets["W"].astype(int)
+jets["L"] = jets["L"].astype(int)
+jets["WL"] = jets["W"]/(jets["W"]+jets["L"])
+
+
+df = pd.DataFrame({"giants":giants["WL"],"jets":jets["WL"]})
+wl = df.plot(figsize = (10,3.7))
+temp = wl.twinx()
+temp = (weather["mean"]).plot(color = "red")
+temp.set_ylabel("Average Temperature in Fahrenheit")
+wl.set_ylabel("Win Percentage")
+temp.set_ylim([40,60])
+wl.set_title("Football W/L Record by Average Season Temperature");
+temp.legend(["temperature"], loc = 4);
+plt.grid(b=None)
+wl.set_facecolor('white')
+wl.grid(axis = "y", color='gray', ls = "--", lw = 0.2)
+plt.tight_layout()

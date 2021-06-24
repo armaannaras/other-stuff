@@ -1,0 +1,56 @@
+import pandas as pd
+import numpy as np
+from sklearn import preprocessing
+from sklearn.linear_model import LogisticRegression #Nice for Binary Classification
+
+
+def scaler(df): #Used to encode string features for use in Logistic Regression
+    scale = preprocessing.LabelEncoder()
+    temp = df.select_dtypes(exclude = ["number"]).astype(str).apply(scale.fit_transform)
+    for i in temp.columns:
+        df[i] = temp[i]
+    return df
+def blight_model():
+    
+    test = pd.read_csv("test.csv", encoding = "ISO-8859-1")
+    train = pd.read_csv("train.csv", encoding = "ISO-8859-1")
+    latlons = pd.read_csv('latlons.csv')
+    addresses = pd.read_csv('addresses.csv')
+    
+    clf = LogisticRegression()
+    
+    addresses = addresses.merge(latlons, how = "inner")
+    test = addresses.merge(test, how = "inner")
+    train = addresses.merge(train, how = "inner")
+    
+    test = scaler(test)
+    train = scaler(train)
+    
+    test.fillna(method = "pad", inplace = True) 
+    train.fillna(method = "pad", inplace = True)
+    
+    test.fillna(0, inplace = True)                 #Fills empty data
+    train.fillna(0, inplace = True)
+    
+    
+    train = train[~train["hearing_date"].isnull()] #drop nulls
+    
+    y_train = train["compliance"] #target
+    
+    drop = ["payment_amount","payment_date", "payment_status", "balance_due", "collection_status", "compliance", "compliance_detail"]
+
+    X_train = train.drop(drop, axis = 1)
+    
+    
+    
+    clf.fit(X_train, y_train)
+    
+    scores = clf.predict_proba(test)[:,1]
+    
+    final = pd.Series(data = scores, index = test.ticket_id)
+    
+    
+    
+    
+    return final #returns a series with likelihood to pay blight ticket and ticket id
+blight_model()
